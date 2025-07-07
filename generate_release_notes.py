@@ -3,6 +3,7 @@ import re
 from github import Github
 from openai import OpenAI
 import requests
+from llama_index.core import VectorStoreIndex, StorageContext, load_index_from_storage
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,7 +32,7 @@ def fetch_prs(tag):
         labels = [l.name for l in pr.labels]
         print(f"\nChecking PR #{pr.number}: {pr.title}")
         print(f" Labels: {labels}")
-        print(f" Marged: {pr.merged}")
+        print(f" Merged: {pr.merged}")
         print(f" State: {pr.state}")
         print(f" Patch URL: {pr.patch_url}")
         print(f"")
@@ -63,18 +64,38 @@ def summarise_pr(pr):
     else: 
         diff_text = response.text[:6000]
 
-    prompt = f"""
-    Summarise this Pull Request clearly and concisely.
-    Title: {pr.title}
-    Body: {pr.body}
-    Diff:
-    {diff_text}
-    """
+    # ✅ Load index from disk
+    storage_context = StorageContext.from_defaults(persist_dir="index")
+    index = load_index_from_storage(storage_context)
 
+    # ✅ Query the index with the diff
+    query_engine = index.as_query_engine()
+    relevant_context = query_engine.query(diff_text)
+
+    # 🧠 Construct a prompt using code context + PR info
+    prompt = f"""
+Summarise this Pull Request clearly and concisely.
+
+🔍 Relevant Code Context:
+{relevant_context}
+
+📌 Title: {pr.title}
+
+📝 Body: {pr.body}
+
+🧾 Diff:
+{diff_text}
+"""
+
+    # 🧠 Call OpenAI
     completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that summarises GitHub pull requests."},
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=500,
+        temperature=0.7,
     )
 
     return completion.choices[0].message.content.strip()
