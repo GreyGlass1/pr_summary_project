@@ -10,7 +10,7 @@ load_dotenv()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 print("Loaded GitHub token:", GITHUB_TOKEN)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-REPO_NAME = "GreyGlass1/test_repo"
+REPO_NAME = "GreyGlass1/pr_summary_project"
 RELEASE_TAG = "release-1.2.3"
 
 gh = Github(GITHUB_TOKEN)
