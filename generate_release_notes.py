@@ -1,19 +1,24 @@
 import os
+from datetime import datetime
 import re
 from github import Github
 from openai import OpenAI
 import requests
 from llama_index.core import VectorStoreIndex, StorageContext, load_index_from_storage
+from summariser import generate_combined_release_summary
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# === CONFIG ===
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-print("Loaded GitHub token:", GITHUB_TOKEN)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-REPO_NAME = "GreyGlass1/pr_summary_project"
+REPO_NAME = os.getenv("REPO_NAME")
 RELEASE_TAG = "release-1.2.3"
+SUMMARY_DIR = "summaries"
+os.makedirs(SUMMARY_DIR, exist_ok=True)
 
+# === INIT ===
 gh = Github(GITHUB_TOKEN)
 user = gh.get_user()
 print(f"Authenticated as: {user.login}")
@@ -27,8 +32,10 @@ def fetch_prs(tag):
     prs = repo.get_pulls(state="closed", sort="updated")
     #return [pr for pr in prs if pr.merged and tag in [l.name for l in pr.labels]]
     matching_prs = []
+    summaries = []
 
-    for pr in prs: 
+    for pr in prs:
+        summary = summarise_pr(pr)
         labels = [l.name for l in pr.labels]
         print(f"\nChecking PR #{pr.number}: {pr.title}")
         print(f" Labels: {labels}")
@@ -36,6 +43,13 @@ def fetch_prs(tag):
         print(f" State: {pr.state}")
         print(f" Patch URL: {pr.patch_url}")
         print(f"")
+
+        summaries.append({
+            "number": pr.number,
+            "title": pr.title,
+            "labels": labels,
+            "summary": summary
+        })
 
         if pr.merged and tag in labels:
             matching_prs.append(pr)
@@ -102,17 +116,47 @@ Summarise this Pull Request clearly and concisely.
 
 
 def main():
-    print ("Starting script...")
+    print("🔍 Starting script...")
+
     prs = fetch_prs(RELEASE_TAG)
-    print(f"Found {len(prs)} PRs with tag {RELEASE_TAG}")
-    output_file = f"release_notes_{RELEASE_TAG}.md"
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(f"# Release Notes for {RELEASE_TAG}\n\n")
+    print(f"✅ Found {len(prs)} PRs with tag {RELEASE_TAG}")
+
+    # Timestamp
+    now = datetime.now().strftime("%Y%m%d_%H%M")
+
+    # File paths
+    notes_filename = f"{RELEASE_TAG}_notes_{now}.md"
+    summary_filename = f"{RELEASE_TAG}_summary_{now}.md"
+    notes_path = os.path.join(SUMMARY_DIR, notes_filename)
+    summary_path = os.path.join(SUMMARY_DIR, summary_filename)
+
+    individual_summaries = []
+
+    with open(notes_path, "w", encoding="utf-8") as f:
+        f.write(f"# 📝 Release Notes for {RELEASE_TAG}\n\n")
         for pr in prs:
+            title = pr.title
             summary = summarise_pr(pr)
-            f.write(f"### PR #{pr.number} – {pr.title}\n")
-            f.write(f"{summary}\n\n---\n\n")
-    print(f"Release notes saved to {output_file}")
+            
+            individual_summaries.append({
+                "number": pr.number,
+                "title": pr.title,
+                "labels": [label.name for label in pr.labels],
+                "summary": summary
+            })
+        for pr_summary in individual_summaries:
+            f.write(f"### PR #{pr_summary['number']} - {pr_summary['title']}\n")
+            f.write(f"{pr_summary['summary']}\n\n---\n\n")
+
+    if individual_summaries:
+        combined_summary = generate_combined_release_summary(individual_summaries)
+        with open(summary_path, "w", encoding="utf-8") as f:
+            f.write(f"# 🚀 Combined Release Summary for {RELEASE_TAG}\n\n")
+            f.write(combined_summary)
+
+    print(f"✅ Release notes saved to {notes_path}")
+    print(f"✅ Combined summary saved to {summary_path}")
+
 
 if __name__ == "__main__":
     main()
