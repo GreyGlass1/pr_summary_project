@@ -101,6 +101,16 @@ Summarise this Pull Request clearly and concisely.
 {diff_text}
 """
 
+=======
+
+📌 Title: {pr.title}
+
+📝 Body: {pr.body}
+
+🧾 Diff:
+{diff_text}
+"""
+
     # 🧠 Call OpenAI
     completion = client.chat.completions.create(
         model="gpt-4",
