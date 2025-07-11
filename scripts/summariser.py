@@ -1,4 +1,8 @@
-from config import client
+from openai import OpenAI
+from config import OPENAI_API_KEY
+
+# --- INIT ---
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def generate_combined_release_summary(summaries):
     prompt = """
