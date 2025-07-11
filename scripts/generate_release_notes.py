@@ -1,32 +1,36 @@
 import os
 from datetime import datetime
 import re
+import subprocess
+import argparse
+import requests
+
 from github import Github
 from openai import OpenAI
-import requests
+from pathlib import Path
+
 from llama_index.core import VectorStoreIndex, StorageContext, load_index_from_storage
 from summariser import generate_combined_release_summary
-from dotenv import load_dotenv
+from config import (
+    GITHUB_TOKEN,
+    OPENAI_API_KEY,
+    REPO_NAME,
+    PROJECT_ROOT,
+    SUMMARY_DIR,
+    INDEX_DIR,
+    TEMP_CODE_DIR,
+)
 
-load_dotenv()
-
-# === CONFIG ===
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-REPO_NAME = os.getenv("REPO_NAME")
-RELEASE_TAG = "release-1.2.3"
-SUMMARY_DIR = "summaries"
-os.makedirs(SUMMARY_DIR, exist_ok=True)
-
-# === INIT ===
+# --- INIT ---
 gh = Github(GITHUB_TOKEN)
 user = gh.get_user()
 print(f"Authenticated as: {user.login}")
 repo = gh.get_repo(REPO_NAME)
 print(f"Connected to repo: {repo.full_name}")
-client = OpenAI(
-  api_key=os.environ['OPENAI_API_KEY'],  # this is also the default, it can be omitted
-)
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+print("Refreshing context index...")
+subprocess.run(["python", "context_embed.py"], check=True)
 
 def fetch_prs(tag):
     prs = repo.get_pulls(state="closed", sort="updated")
@@ -79,7 +83,7 @@ def summarise_pr(pr):
         diff_text = response.text[:6000]
 
     # ✅ Load index from disk
-    storage_context = StorageContext.from_defaults(persist_dir="index")
+    storage_context = StorageContext.from_defaults(persist_dir=INDEX_DIR)
     index = load_index_from_storage(storage_context)
 
     # ✅ Query the index with the diff
@@ -115,6 +119,12 @@ Summarise this Pull Request clearly and concisely.
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--release", required=True, help="Release tag (e.g. release-1.2.3)")
+    args = parser.parse_args()
+
+    RELEASE_TAG = args.release
+
     print("🔍 Starting script...")
 
     prs = fetch_prs(RELEASE_TAG)
