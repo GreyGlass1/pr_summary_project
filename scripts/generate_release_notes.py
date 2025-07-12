@@ -10,7 +10,7 @@ from openai import OpenAI
 from pathlib import Path
 
 from llama_index.core import VectorStoreIndex, StorageContext, load_index_from_storage
-from summariser import generate_combined_release_summary
+from summariser import generate_combined_release_summary, score_pr
 from config import (
     GITHUB_TOKEN,
     OPENAI_API_KEY,
@@ -40,11 +40,13 @@ def fetch_prs(tag):
 
     for pr in prs:
         summary = summarise_pr(pr)
+        score, reason = score_pr(pr)
         labels = [l.name for l in pr.labels]
         print(f"\nChecking PR #{pr.number}: {pr.title}")
         print(f" Labels: {labels}")
         print(f" Merged: {pr.merged}")
         print(f" State: {pr.state}")
+        print(f" Score: {score}%")
         print(f" Patch URL: {pr.patch_url}")
         print(f"")
 
@@ -52,7 +54,9 @@ def fetch_prs(tag):
             "number": pr.number,
             "title": pr.title,
             "labels": labels,
-            "summary": summary
+            "summary": summary,
+            "score": score,
+            "score_reason": reason,
         })
 
         if pr.merged and tag in labels:
@@ -146,15 +150,20 @@ def main():
         for pr in prs:
             title = pr.title
             summary = summarise_pr(pr)
+            score, reason = score_pr(pr)
             
             individual_summaries.append({
                 "number": pr.number,
                 "title": pr.title,
                 "labels": [label.name for label in pr.labels],
-                "summary": summary
+                "summary": summary,
+                "score": score,
+                "score_reason": reason,
             })
         for pr_summary in individual_summaries:
             f.write(f"### PR #{pr_summary['number']} - {pr_summary['title']}\n")
+            f.write(f"**Score** {pr_summary.get('score', 'N/A')}%\n")
+            f.write(f"**Reason** {pr_summary.get('score_reason', 'Not Provided')}\n\n")
             f.write(f"{pr_summary['summary']}\n\n---\n\n")
 
     if individual_summaries:
