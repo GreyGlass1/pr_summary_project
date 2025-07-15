@@ -112,7 +112,10 @@ Summarise this Pull Request clearly and concisely.
     completion = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that summarises GitHub pull requests."},
+            {"role": "system", "content": "You are a highly technical assistant that summarises GitHub pull requests for engineering release notes. "
+    "Explain clearly what the PR achieves and why it matters. "
+    "If the PR updates external Terraform modules (e.g., changes a git tag in a module source), explain the potential impact on infrastructure. "
+    "Use concise bullet points when helpful, and keep the language professional and context-aware."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=500,
