@@ -1,30 +1,41 @@
-# 🧠 PR Summary Project
+# 🧠 Context-Aware GitHub PR Summarisation Tool
 
-Automatically summarises GitHub pull requests and generates release notes, using OpenAI and context from your codebase (via Retrieval Augmented Generation).
-
----
-
-## 🚀 Features
-
-- Summarises merged PRs with a specific release label (e.g. `release-1.2.3`)
-- Embeds and queries codebase using LLM-powered semantic search
-- Generates clean, context-aware release notes in Markdown
-- Local vector DB storage with Chroma
-- Built with Python 3.13+
+This project automates the generation of high-quality release notes by semantically summarising merged pull requests based on a release tag. It enriches summaries with contextual understanding from your codebase and external dependencies, making them insightful, actionable, and easy to review.
 
 ---
 
-## 📁 Folder Structure
-pr-summary-project/
-├── codebase/                  # Codebase to embed
-├── index/                     # Chroma vector DB index (auto-generated)
-├── venv/                      # Python virtual environment
-├── .env                       # API keys (not tracked)
-├── context_embed.py           # Embeds and retrieves codebase context
-├── generate_release_notes.py  # Main script
-└── README.md
+## 🚀 Key Features
 
-py -3.13 -m venv venv
-venv\Scripts\activate.bat
-python --version
-pip install llama-index chromadb openai python-dotenv requests pygithub
+- **Release-Tag Based Summarisation**: Summarises only merged PRs with a given release label (e.g., `release-1.2.3`).
+- **AI-Powered Summarisation with Semantic Context**: Uses OpenAI GPT-4 and LlamaIndex to summarise PRs with deep context awareness, including what changed, why it matters, and potential risks.
+- **Codebase Indexing with Vector Search**: Automatically embeds your repo and any external Terraform module dependencies into a vector index for fast semantic retrieval.
+- **External Module Tracking**: Scans `.tf` files for external Git module references and automatically clones & indexes the latest tag.
+- **Scoring for PRs (Experimental)**: Each PR is rated with a quality score (out of 100%) and includes a reasoning explanation.
+- **Summarised Output**: Generates both individual PR summaries and a combined executive release summary in Markdown format.
+
+---
+
+## 🔍 How the Tool Uses AI-Powered Semantic Search
+
+This tool uses [LlamaIndex](https://www.llamaindex.ai/) to convert your codebase into embeddings stored in a vector index. When evaluating a PR, it uses the PR's code diff to semantically search this index and retrieve relevant context from your actual code. This context is included in a carefully structured prompt sent to OpenAI’s GPT-4 to produce high-quality summaries with understanding beyond simple diffs.
+
+By combining vector search + AI reasoning, it can answer:
+- Why a change was made
+- What modules it impacts
+- Potential side effects or risks
+- How it fits into the overall architecture
+
+---
+
+## 🛠️ Setup
+
+### Requirements
+- Python 3.10+
+- A GitHub access token
+- OpenAI API key
+- Your codebase cloned locally
+
+### Installation
+```bash
+pip install -r requirements.txt
+cp .env.example .env
