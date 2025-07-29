@@ -36,6 +36,7 @@ By combining vector search + AI reasoning, it can answer:
 - Your codebase cloned locally
 
 ### Installation
-```bash
+py -3.13 -m venv venv
+venv\Scripts\activate.bat
+python --version
 pip install -r requirements.txt
-cp .env.example .env
