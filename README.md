@@ -27,4 +27,4 @@ pr-summary-project/
 py -3.13 -m venv venv
 venv\Scripts\activate.bat
 python --version
-pip install llama-index chromadb openai python-dotenv requests pygithub
+pip install -r requirements.txt

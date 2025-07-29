@@ -19,7 +19,9 @@ from config import (
     SUMMARY_DIR,
     INDEX_DIR,
     TEMP_CODE_DIR,
+    CONTEXT_DIR,
 )
+from utils import count_tokens
 
 # --- INIT ---
 gh = Github(GITHUB_TOKEN)
@@ -94,6 +96,15 @@ def summarise_pr(pr):
     query_engine = index.as_query_engine()
     relevant_context = query_engine.query(diff_text)
 
+    # Save relevant context to a separate file for auditing
+    context_log_file = CONTEXT_DIR / f"context_pr{pr.number}_{datetime.now():%Y%m%d_%H%M%S}.txt"
+    with open(context_log_file, "w", encoding="utf-8") as f:
+        f.write(f"--- Diff used for PR #{pr.number} ---\n")
+        f.write(diff_text)
+        f.write("\n\n--- Semantic Context Retrieved ---\n")
+        f.write(relevant_context)
+    print(f"📝 Saved semantic context for PR #{pr.number} to {context_log_file}")
+
     # 🧠 Construct a prompt using code context + PR info
     prompt = f"""
 Summarise this Pull Request clearly and concisely.
@@ -108,6 +119,10 @@ Summarise this Pull Request clearly and concisely.
 🧾 Diff:
 {diff_text}
 """
+
+    token_count = count_tokens(prmpt, model = "gpt-4")
+    print(f"🧠 Estimated prmpt token usage for PR #{pr.numer}")
+
     # 🧠 Call OpenAI
     completion = client.chat.completions.create(
         model="gpt-4",
